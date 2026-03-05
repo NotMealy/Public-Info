@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Star Wars · плавный свайп-слайдер</title>
+  <!-- Google Fonts + Swiper CSS -->
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/4.5.1/css/swiper.min.css">
+  <style>
+    /* ----- базовые переменные и сброс ----- */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #0a0f1a;
+      --surface: #0f1828;
+      --card: #131f30;
+      --border: rgba(255,255,255,0.07);
+      --red: #cc2240;
+      --red-glow: rgba(204,34,64,0.25);
+      --blue: #3a8aff;
+      --blue-dim: rgba(58,138,255,0.15);
+      --gold: #f0a030;
+      --gold-dim: rgba(240,160,48,0.12);
+      --green: #22c55e;
+      --green-dim: rgba(34,197,94,0.12);
+      --text: #e8eaf0;
+      --text-sec: rgba(232,234,240,0.5);
+      --text-muted: rgba(232,234,240,0.3);
+    }
+
+    body {
+      font-family: 'Onest', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* hero‑секция (кратко) */
+    .hero-stars {
+      position: absolute; inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(1px 1px at 8% 12%, rgba(255,255,255,0.7) 0%, transparent 100%),
+        radial-gradient(1px 1px at 22% 5%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(2px 2px at 38% 25%, rgba(255,255,255,0.8) 0%, transparent 100%),
+        radial-gradient(1px 1px at 58% 8%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 74% 18%, rgba(255,255,255,0.6) 0%, transparent 100%),
+        radial-gradient(2px 2px at 88% 7%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 5% 55%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 15% 70%, rgba(255,255,255,0.6) 0%, transparent 100%),
+        radial-gradient(1px 1px at 45% 80%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(2px 2px at 68% 75%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 82% 88%, rgba(255,255,255,0.7) 0%, transparent 100%),
+        radial-gradient(1px 1px at 95% 62%, rgba(255,255,255,0.5) 0%, transparent 100%);
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #0d1520 0%, #0a1020 50%, #10080e 100%);
+      padding: 70px 20px 90px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero > * { position: relative; z-index: 3; }
+
+    .hero-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border: 1px solid rgba(204,34,64,0.3);
+      border-radius: 30px; font-size: 12px; color: rgba(255,255,255,0.6);
+      margin-bottom: 24px;
+    }
+    .hero-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: pulse 2s infinite; }
+
+    @keyframes pulse { 0%,100%{opacity:1; transform:scale(1)} 50%{opacity:0.5; transform:scale(0.8)} }
+
+    .hero h1 {
+      font-family: 'Unbounded', sans-serif;
+      font-size: clamp(26px, 5vw, 44px); font-weight: 900; line-height: 1.2;
+      background: linear-gradient(135deg,#fff 30%,rgba(255,255,255,0.55));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 16px;
+    }
+
+    .hero p { font-size: 16px; color: var(--text-sec); max-width: 580px; margin: 0 auto 30px; }
+
+    .hero-badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 25px; }
+
+    .badge {
+      padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      background: rgba(255,255,255,0.03); border: 1px solid transparent;
+    }
+    .badge.red { background: rgba(204,34,64,0.15); color: #ff5a7a; border-color: rgba(204,34,64,0.3); }
+    .badge.blue { background: var(--blue-dim); color: #7ab4ff; border-color: rgba(58,138,255,0.3); }
+    .badge.gold { background: var(--gold-dim); color: #f0c060; border-color: rgba(240,160,48,0.3); }
+
+    /* ----- основной контейнер слайдера (плавный свайп) ----- */
+    .content {
+      max-width: 1100px;
+      margin: 30px auto 0;
+      padding: 0 20px;
+      position: relative;
+      height: 600px; /* фикс высота для десктопа */
+    }
+
+    /* красная панель слева */
+    .bg-shape {
+      position: absolute;
+      top: 0; left: 0;
+      width: 50%; height: 100%;
+      background: linear-gradient(-45deg, #cc3843, #cb193f);
+      border-radius: 30px;
+      z-index: 1;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    }
+
+    /* ---------- плавающие изображения ---------- */
+    .product-img {
+      position: absolute;
+      top: 50%; right: 0;
+      transform: translateY(-50%);
+      width: 45%; z-index: 5;
+      pointer-events: none;
+    }
+
+    .product-img__item {
+      position: absolute;
+      top: 0; right: 0;
+      width: 100%;
+      opacity: 0;
+      transform: translateY(-50%) translateX(130px);
+      transition: opacity 0.5s cubic-bezier(0.2, 0.9, 0.3, 1), transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1);
+      pointer-events: none;
+    }
+
+    .product-img__item.active {
+      opacity: 1;
+      transform: translateY(-50%) translateX(0);
+      transition-delay: 0.15s; /* небольшая задержка для синхронизации с появлением текста */
+    }
+
+    /* заглушки SVG */
+    .product-img__item svg {
+      max-width: 100%;
+      filter: drop-shadow(0 10px 20px rgba(0,0,0,0.6));
+    }
+
+    /* ---------- основной слайдер ---------- */
+    .product-slider {
+      position: absolute;
+      top: 50%; right: 0;
+      transform: translateY(-50%);
+      width: 75%; height: 85%;
+      background: var(--card);
+      border-radius: 30px;
+      box-shadow: 0 28px 79px rgba(0,0,0,0.6);
+      z-index: 10;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    /* кнопки навигации (для десктопа, на мобильных не мешают) */
+    .prev, .next {
+      position: absolute; top: 50%; z-index: 22;
+      width: 54px; height: 54px;
+      border-radius: 50%;
+      background: rgba(20,30,45,0.8);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: white; font-size: 28px;
+      cursor: pointer;
+      transition: 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .prev { left: -25%; transform: translate(-50%, -50%); }
+    .next { right: 0; transform: translate(50%, -50%); }
+
+    .prev.disabled, .next.disabled { opacity: 0.2; pointer-events: none; }
+
+    .prev:hover, .next:hover { background: var(--red); border-color: var(--red); }
+
+    /* обёртка свайпа (Swiper добавляет transition автоматически) */
+    .swiper-wrapper {
+      transition-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1); /* плавный "overshoot" легкий */
+    }
+
+    .swiper-slide {
+      background: transparent;
+      padding: 20px 25px 25px 30px;
+    }
+
+    /* ---------- карточка товара ---------- */
+    .product-slider__title {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 36px; font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 15px;
+      color: #fff;
+    }
+
+    .product-slider__price {
+      font-size: 32px; font-weight: 600;
+      color: var(--gold);
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+    .product-slider__price sup { font-size: 18px; top: -0.5em; }
+
+    .product-ctr {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+      margin: 25px 0 30px;
+    }
+
+    .product-labels__title {
+      font-size: 12px; color: var(--text-muted); letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .product-labels__group {
+      display: flex; gap: 12px;
+    }
+    .product-labels__group label {
+      display: flex; align-items: center; gap: 4px;
+      cursor: pointer; color: #bbb;
+    }
+    .product-labels__group input[type="radio"] {
+      accent-color: var(--red); width: 16px; height: 16px;
+    }
+
+    .hr-vertical {
+      width: 1px; height: 70px;
+      background: rgba(255,255,255,0.1);
+    }
+
+    /* кольцо прогресса */
+    .product-inf {
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .product-inf__percent {
+      position: relative; width: 100px; height: 100px;
+      margin-bottom: 8px;
+    }
+    .ring-track {
+      transform: rotate(180deg) scaleY(-1);
+      transform-origin: 50%;
+      transition: stroke-dasharray 0.1ms; /* анимация через requestAnimationFrame */
+    }
+    .product-inf__percent-txt {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 20px; font-weight: 700; color: white;
+    }
+    .product-inf__title { font-size: 12px; color: var(--text-muted); letter-spacing: 0.5px; }
+
+    .product-slider__bottom {
+      display: flex; gap: 15px; flex-wrap: wrap;
+    }
+    .product-slider__cart {
+      background: var(--red); border: none; padding: 16px 28px;
+      border-radius: 50px; font-weight: 700; color: white;
+      letter-spacing: 0.5px; cursor: pointer;
+      transition: 0.2s;
+    }
+    .product-slider__cart:hover { background: #b51e38; }
+    .product-slider__fav {
+      background: transparent; border: 1px solid rgba(255,255,255,0.2);
+      padding: 16px 28px; border-radius: 50px; font-weight: 500;
+      color: #ccc; cursor: pointer; transition: 0.2s;
+    }
+    .product-slider__fav:hover { border-color: var(--red); color: white; }
+    .product-slider__fav.is-active { background: rgba(204,34,64,0.2); color: #ff8a8a; border-color: var(--red); }
+
+    /* ---------- плавное появление контента при активном слайде ---------- */
+    .product-slider__title,
+    .product-slider__price,
+    .product-ctr,
+    .product-slider__bottom {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.5s cubic-bezier(0.2, 0.9, 0.3, 1), transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+
+    .swiper-slide-active .product-slider__title { opacity:1; transform:none; transition-delay:0.0s; }
+    .swiper-slide-active .product-slider__price { opacity:1; transform:none; transition-delay:0.15s; }
+    .swiper-slide-active .product-ctr { opacity:1; transform:none; transition-delay:0.3s; }
+    .swiper-slide-active .product-slider__bottom { opacity:1; transform:none; transition-delay:0.45s; }
+
+    /* ---------- адаптивность (медиа-запросы) ---------- */
+    @media screen and (max-width: 992px) {
+      .content { height: auto; min-height: 650px; margin-top: 10px; }
+      .bg-shape { width: 90%; left: 50%; transform: translateX(-50%); height: 280px; }
+      .product-slider { position: relative; width: 90%; margin: 200px auto 0; transform: none; top: 0; left: 0; height: auto; }
+      .product-img { left: 50%; transform: translateX(-50%); top: 30px; height: 220px; width: 220px; }
+      .product-img__item.active { transform: translateY(0) translateX(0); }
+      .product-img__item { transform: translateY(0) translateX(80px); top: 0; }
+      .prev { left: -5px; transform: translateY(-50%); }
+      .next { right: -5px; transform: translateY(-50%); }
+    }
+
+    @media screen and (max-width: 576px) {
+      .product-slider { width: 95%; padding: 10px; }
+      .product-slider__title { font-size: 26px; }
+      .product-ctr { flex-direction: column; align-items: flex-start; gap: 15px; }
+      .hr-vertical { display: none; }
+      .product-slider__cart, .product-slider__fav { width: 100%; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- hero -->
+<section class="hero">
+  <div class="hero-stars"></div>
+  <div class="hero-chip"><span class="dot"></span> плавный свайп · Star Wars</div>
+  <h1>Слайдер<br>StarWars</h1>
+  <p>Анимация захватывает изображение и текст одновременно — всё связано.</p>
+  <div class="hero-badges">
+    <span class="badge red">Swiper 4.x</span>
+    <span class="badge blue">плавный свайп</span>
+    <span class="badge gold">SVG кольцо</span>
+    <span class="badge blue">синхронные слои</span>
+  </div>
+</section>
+
+<!-- основной блок слайдера -->
+<div class="content">
+  <div class="bg-shape"></div>
+
+  <!-- плавающие изображения (4 шт) -->
+  <div class="product-img">
+    <div class="product-img__item" id="img1">
+      <svg viewBox="0 0 200 200" width="220" height="220">
+        <circle cx="100" cy="100" r="70" fill="#333" stroke="#aaa" stroke-width="4"/>
+        <circle cx="70" cy="80" r="12" fill="#222" stroke="#ff5" stroke-width="2"/>
+        <circle cx="130" cy="80" r="12" fill="#222" stroke="#ff5" stroke-width="2"/>
+        <rect x="80" y="120" width="40" height="15" fill="#666"/>
+        <text x="100" y="180" fill="white" font-size="16" text-anchor="middle">TIE Fighter</text>
+      </svg>
+    </div>
+    <div class="product-img__item" id="img2">
+      <svg viewBox="0 0 200 200" width="220" height="220">
+        <rect x="70" y="40" width="60" height="120" fill="#b33" rx="10" />
+        <rect x="40" y="80" width="30" height="50" fill="#777" rx="8" />
+        <rect x="130" y="80" width="30" height="50" fill="#777" rx="8" />
+        <text x="100" y="180" fill="white" font-size="16" text-anchor="middle">Lightsaber</text>
+      </svg>
+    </div>
+    <div class="product-img__item" id="img3">
+      <svg viewBox="0 0 200 200" width="220" height="220">
+        <circle cx="100" cy="100" r="60" fill="#444" stroke="#888" stroke-width="6"/>
+        <circle cx="80" cy="80" r="8" fill="#222" />
+        <circle cx="120" cy="120" r="12" fill="#222" />
+        <text x="100" y="180" fill="white" font-size="16" text-anchor="middle">Death Star</text>
+      </svg>
+    </div>
+    <div class="product-img__item active" id="img4">
+      <svg viewBox="0 0 200 200" width="220" height="220">
+        <ellipse cx="100" cy="100" rx="60" ry="70" fill="#555" stroke="#ccc" stroke-width="5"/>
+        <rect x="80" y="70" width="40" height="10" fill="#333" />
+        <circle cx="100" cy="130" r="15" fill="#222" />
+        <text x="100" y="180" fill="white" font-size="16" text-anchor="middle">Stormtrooper</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- слайдер с классом .product-slider -->
+  <div class="product-slider">
+    <button class="prev disabled" aria-label="Previous slide">←</button>
+    <button class="next" aria-label="Next slide">→</button>
+    <div class="product-slider__wrp swiper-wrapper">
+
+      <!-- слайд 1 - шлем штурмовика -->
+      <div class="product-slider__item swiper-slide" data-target="img4" data-pct="80">
+        <div class="product-slider__card">
+          <div class="product-slider__content">
+            <h1 class="product-slider__title">ШЛЕМ<br>ШТУРМОВИКА</h1>
+            <span class="product-slider__price">$1.299,<sup>99</sup></span>
+            <div class="product-ctr">
+              <div class="product-labels">
+                <div class="product-labels__title">РАЗМЕР ШЛЕМА</div>
+                <div class="product-labels__group">
+                  <label><input type="radio" name="size1"> <span>S</span></label>
+                  <label><input type="radio" name="size1" checked> <span>M</span></label>
+                  <label><input type="radio" name="size1"> <span>L</span></label>
+                  <label><input type="radio" name="size1"> <span>XL</span></label>
+                </div>
+              </div>
+              <span class="hr-vertical"></span>
+              <div class="product-inf">
+                <div class="product-inf__percent">
+                  <svg width="100" height="100" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="44" stroke="#1a2535" stroke-width="8" fill="none" />
+                    <circle class="ring-track" cx="50" cy="50" r="44" stroke="#cb2240" stroke-width="4" fill="none" stroke-dasharray="0 276" stroke-linecap="round" />
+                  </svg>
+                  <div class="product-inf__percent-txt">80%</div>
+                </div>
+                <span class="product-inf__title">ДОЛГОВЕЧНОСТЬ</span>
+              </div>
+            </div>
+            <div class="product-slider__bottom">
+              <button class="product-slider__cart">ДОБАВИТЬ В КОРЗИНУ</button>
+              <button class="product-slider__fav js-fav">♡ В СПИСОК ЖЕЛАЕМОГО</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- слайд 2 - TIE Fighter -->
+      <div class="product-slider__item swiper-slide" data-target="img1" data-pct="65">
+        <div class="product-slider__card">
+          <div class="product-slider__content">
+            <h1 class="product-slider__title">TIE<br>FIGHTER</h1>
+            <span class="product-slider__price">$2.499,<sup>00</sup></span>
+            <div class="product-ctr">
+              <div class="product-labels">
+                <div class="product-labels__title">МОДЕЛЬ</div>
+                <div class="product-labels__group">
+                  <label><input type="radio" name="size2" checked> <span>стандарт</span></label>
+                  <label><input type="radio" name="size2"> <span>элит</span></label>
+                </div>
+              </div>
+              <span class="hr-vertical"></span>
+              <div class="product-inf">
+                <div class="product-inf__percent">
+                  <svg width="100" height="100" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="44" stroke="#1a2535" stroke-width="8" fill="none"/>
+                    <circle class="ring-track" cx="50" cy="50" r="44" stroke="#cb2240" stroke-width="4" fill="none" stroke-dasharray="0 276" stroke-linecap="round" />
+                  </svg>
+                  <div class="product-inf__percent-txt">65%</div>
+                </div>
+                <span class="product-inf__title">СКОРОСТЬ</span>
+              </div>
+            </div>
+            <div class="product-slider__bottom">
+              <button class="product-slider__cart">ДОБАВИТЬ В КОРЗИНУ</button>
+              <button class="product-slider__fav js-fav">♡ В СПИСОК ЖЕЛАЕМОГО</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- слайд 3 - меч Кайло Рена -->
+      <div class="product-slider__item swiper-slide" data-target="img2" data-pct="90">
+        <div class="product-slider__card">
+          <div class="product-slider__content">
+            <h1 class="product-slider__title">МЕЧ<br>КАЙЛО РЕНА</h1>
+            <span class="product-slider__price">$3.999,<sup>50</sup></span>
+            <div class="product-ctr">
+              <div class="product-labels">
+                <div class="product-labels__title">ЦВЕТ КРИСТАЛЛА</div>
+                <div class="product-labels__group">
+                  <label><input type="radio" name="size3" checked> <span>красный</span></label>
+                  <label><input type="radio" name="size3"> <span>синий</span></label>
+                </div>
+              </div>
+              <span class="hr-vertical"></span>
+              <div class="product-inf">
+                <div class="product-inf__percent">
+                  <svg width="100" height="100" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="44" stroke="#1a2535" stroke-width="8" fill="none"/>
+                    <circle class="ring-track" cx="50" cy="50" r="44" stroke="#cb2240" stroke-width="4" fill="none" stroke-dasharray="0 276" stroke-linecap="round" />
+                  </svg>
+                  <div class="product-inf__percent-txt">90%</div>
+                </div>
+                <span class="product-inf__title">МОЩНОСТЬ</span>
+              </div>
+            </div>
+            <div class="product-slider__bottom">
+              <button class="product-slider__cart">ДОБАВИТЬ В КОРЗИНУ</button>
+              <button class="product-slider__fav js-fav">♡ В СПИСОК ЖЕЛАЕМОГО</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- слайд 4 - звезда смерти -->
+      <div class="product-slider__item swiper-slide" data-target="img3" data-pct="40">
+        <div class="product-slider__card">
+          <div class="product-slider__content">
+            <h1 class="product-slider__title">ЗВЕЗДА<br>СМЕРТИ</h1>
+            <span class="product-slider__price">$∞</span>
+            <div class="product-ctr">
+              <div class="product-labels">
+                <div class="product-labels__title">СТАЦИОНАРНЫЙ</div>
+                <div class="product-labels__group">
+                  <label><input type="radio" name="size4" checked> <span>I</span></label>
+                  <label><input type="radio" name="size4"> <span>II</span></label>
+                </div>
+              </div>
+              <span class="hr-vertical"></span>
+              <div class="product-inf">
+                <div class="product-inf__percent">
+                  <svg width="100" height="100" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="44" stroke="#1a2535" stroke-width="8" fill="none"/>
+                    <circle class="ring-track" cx="50" cy="50" r="44" stroke="#cb2240" stroke-width="4" fill="none" stroke-dasharray="0 276" stroke-linecap="round" />
+                  </svg>
+                  <div class="product-inf__percent-txt">40%</div>
+                </div>
+                <span class="product-inf__title">ЗАВЕРШЕНИЕ</span>
+              </div>
+            </div>
+            <div class="product-slider__bottom">
+              <button class="product-slider__cart">ДОБАВИТЬ В КОРЗИНУ</button>
+              <button class="product-slider__fav js-fav">♡ В СПИСОК ЖЕЛАЕМОГО</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- swiper-wrapper -->
+  </div> <!-- product-slider -->
+</div> <!-- content -->
+
+<!-- Swiper JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/4.5.1/js/swiper.min.js"></script>
+
+<script>
+  (function() {
+    // ---------- константы и утилиты ----------
+    const CIRC = 2 * Math.PI * 44; // ≈ 276.46
+
+    function animateRing(slideEl) {
+      const pct = parseInt(slideEl.getAttribute('data-pct'), 10) / 100;
+      const ring = slideEl.querySelector('.ring-track');
+      if (!ring) return;
+      const target = (CIRC * pct).toFixed(2);
+      let start = null;
+      function step(timestamp) {
+        if (!start) start = timestamp;
+        const progress = Math.min((timestamp - start) / 900, 1); // 900ms
+        const ease = 1 - Math.pow(1 - progress, 3); // cubic-out
+        ring.setAttribute('stroke-dasharray', (target * ease).toFixed(2) + ' ' + CIRC.toFixed(2));
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function resetRing(slideEl) {
+      const ring = slideEl.querySelector('.ring-track');
+      if (ring) ring.setAttribute('stroke-dasharray', '0 ' + CIRC);
+    }
+
+    // ---------- инициализация Swiper с плавным свайпом ----------
+    const swiper = new Swiper('.product-slider', {
+      speed: 650,                          // длительность перехода (мс)
+      spaceBetween: 30,
+      effect: 'slide',                      // именно slide даёт перетаскивание
+      loop: false,
+      navigation: { nextEl: '.next', prevEl: '.prev' },
+      grabCursor: true,                     // курсор "рука" при перетаскивании
+      on: {
+        init: function () {
+          const slides = document.querySelectorAll('.product-slider__item');
+          const first = slides[this.activeIndex];
+          const targetId = first.getAttribute('data-target');
+          document.querySelectorAll('.product-img__item').forEach(el => el.classList.remove('active'));
+          document.getElementById(targetId)?.classList.add('active');
+          setTimeout(() => animateRing(first), 600); // задержка как в методичке
+          // обновить кнопки
+          document.querySelector('.prev').classList.toggle('disabled', this.isBeginning);
+          document.querySelector('.next').classList.toggle('disabled', this.isEnd);
+        },
+        slideChangeTransitionStart: function () {
+          // момент начала перехода — сбрасываем кольцо предыдущего слайда
+          const slides = document.querySelectorAll('.product-slider__item');
+          const prev = slides[this.previousIndex];
+          if (prev) resetRing(prev);
+        },
+        slideChangeTransitionEnd: function () {
+          // окончание перехода — обновляем картинку, запускаем анимацию кольца
+          const slides = document.querySelectorAll('.product-slider__item');
+          const active = slides[this.activeIndex];
+          const targetId = active.getAttribute('data-target');
+          document.querySelectorAll('.product-img__item').forEach(el => el.classList.remove('active'));
+          document.getElementById(targetId)?.classList.add('active');
+
+          setTimeout(() => animateRing(active), 150); // небольшая задержка после смены
+
+          // disabled-состояния
+          document.querySelector('.prev').classList.toggle('disabled', this.isBeginning);
+          document.querySelector('.next').classList.toggle('disabled', this.isEnd);
+        }
+      }
+    });
+
+    // кнопка "в избранное" (демо)
+    document.querySelectorAll('.js-fav').forEach(btn => {
+      btn.addEventListener('click', function () {
+        this.classList.toggle('is-active');
+      });
+    });
+
+  })();
+</script>
+<!-- чек-лист полностью удалён по вашему запросу -->
+</body>
+</html>
